@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "root": {
+    "dir": "h",
+    "percent": 50,
+    "type": "split",
+    "children": [
+      {
+        "app": "shell",
+        "id": "p10",
+        "label": "shell",
+        "command": "",
+        "run": false,
+        "type": "pane"
+      },
+      {
+        "app": "shell",
+        "id": "p11",
+        "label": "shell",
+        "command": "",
+        "run": false,
+        "type": "pane"
+      }
+    ]
+  },
+  "desc": "two shells side by side",
+  "name": "simple"
+}

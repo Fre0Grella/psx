@@ -1,0 +1,44 @@
+{
+  "focus": "p1",
+  "version": 1,
+  "root": {
+    "dir": "h",
+    "percent": 45,
+    "type": "split",
+    "children": [
+      {
+        "app": "claude",
+        "id": "p1",
+        "label": "Claude Code",
+        "command": "claude",
+        "run": true,
+        "type": "pane"
+      },
+      {
+        "dir": "v",
+        "percent": 50,
+        "type": "split",
+        "children": [
+          {
+            "app": "git",
+            "id": "p2",
+            "label": "git",
+            "command": "git status",
+            "run": false,
+            "type": "pane"
+          },
+          {
+            "app": "npm",
+            "id": "p3",
+            "label": "dev server",
+            "command": "npm run dev",
+            "run": false,
+            "type": "pane"
+          }
+        ]
+      }
+    ]
+  },
+  "desc": "Claude Code left, git and dev server right",
+  "name": "dev"
+}
