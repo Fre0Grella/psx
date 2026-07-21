@@ -153,8 +153,7 @@ function Invoke-PsxDelete {
   Write-Host ''
   Write-Host "  delete template '$Name'? ($(@(Get-PsxPanes $layout.root).Count) panes - $($layout.desc))" -ForegroundColor Yellow
   Write-Host '  [y] delete    anything else cancels' -ForegroundColor DarkGray
-  $k = [Console]::ReadKey($true)
-  if ($k.KeyChar -ne 'y') { Write-Host '  cancelled' -ForegroundColor DarkGray; return }
+  if ((Read-PsxKey) -ne 'y') { Write-Host '  cancelled' -ForegroundColor DarkGray; return }
 
   if (Remove-PsxTemplate $Name) { Write-Host "  deleted '$Name'" -ForegroundColor DarkGray }
 }

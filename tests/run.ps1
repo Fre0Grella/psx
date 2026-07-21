@@ -195,6 +195,46 @@ finally {
   Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# ---------------------------------------------------------------- seeding
+# Seeding ran on every invocation once, which made starter templates
+# undeletable: delete removed the file and the next command copied it back.
+# These assertions are the regression guard.
+section 'seeding'
+
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ("psxseed-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+$seeds = Join-Path $tmp 'seeds'
+New-Item -ItemType Directory -Force -Path $seeds | Out-Null
+$origHome = $HOME
+try {
+  Set-Variable -Name HOME -Value (Join-Path $tmp 'home') -Scope Global -Force
+
+  $s1 = New-PsxLayout 'starter' 'a starter'
+  $s1 | ConvertTo-Json -Depth 30 | Set-Content (Join-Path $seeds 'starter.json') -Encoding utf8
+
+  Initialize-PsxTemplates $seeds
+  ok 'first run seeds the starters' ((Get-PsxTemplateNames) -contains 'starter')
+
+  $null = Remove-PsxTemplate 'starter'
+  Initialize-PsxTemplates $seeds
+  ok 'a deleted starter STAYS deleted' (-not ((Get-PsxTemplateNames) -contains 'starter'))
+
+  Initialize-PsxTemplates $seeds
+  ok 'still gone after another run' (-not ((Get-PsxTemplateNames) -contains 'starter'))
+
+  # An install predating the marker must not have deletions undone by an upgrade.
+  Set-Variable -Name HOME -Value (Join-Path $tmp 'legacy') -Scope Global -Force
+  $mine = New-PsxLayout 'mine' 'hand made'
+  Export-PsxTemplate $mine | Out-Null
+  Initialize-PsxTemplates $seeds
+  ok 'an existing install is not re-seeded' (-not ((Get-PsxTemplateNames) -contains 'starter'))
+  ok 'and keeps its own templates' ((Get-PsxTemplateNames) -contains 'mine')
+}
+finally {
+  Set-Variable -Name HOME -Value $origHome -Scope Global -Force
+  Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 # ---------------------------------------------------------------- build plan
 section 'build plan'
 

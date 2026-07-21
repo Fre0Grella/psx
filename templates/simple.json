@@ -1,28 +1,28 @@
 {
+  "desc": "two shells side by side",
+  "name": "simple",
   "version": 1,
   "root": {
     "dir": "h",
     "percent": 50,
-    "type": "split",
     "children": [
       {
-        "app": "shell",
-        "id": "p10",
-        "label": "shell",
+        "id": "p4",
+        "type": "pane",
         "command": "",
         "run": false,
-        "type": "pane"
+        "label": "shell",
+        "app": "shell"
       },
       {
-        "app": "shell",
-        "id": "p11",
-        "label": "shell",
+        "id": "p5",
+        "type": "pane",
         "command": "",
         "run": false,
-        "type": "pane"
+        "label": "shell",
+        "app": "shell"
       }
-    ]
-  },
-  "desc": "two shells side by side",
-  "name": "simple"
+    ],
+    "type": "split"
+  }
 }

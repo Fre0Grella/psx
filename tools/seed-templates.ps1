@@ -29,26 +29,10 @@ Set-PsxPaneApp $dev $rightBottom 'npm' 'npm run dev' $false 'dev server' | Out-N
 $dev.focus = $dev.root.children[0].id
 Save $dev
 
-# --- build -----------------------------------------------------------------
-$b = New-PsxLayout 'build' 'editor left, build and test right'
-$bRight = Split-PsxPane $b $b.root.id 'h' 50
-$bBottom = Split-PsxPane $b $bRight 'v' 50
-Set-PsxPaneApp $b $b.root.children[0].id 'npm' 'npm run dev' $false 'dev server' | Out-Null
-Set-PsxPaneApp $b $bRight 'build' 'npm run build' $false 'build' | Out-Null
-Set-PsxPaneApp $b $bBottom 'custom' 'npm test -- --watch' $false 'tests' | Out-Null
-$b.focus = $b.root.children[0].id
-Save $b
-
-# --- quantum ---------------------------------------------------------------
-$q = New-PsxLayout 'quantum' 'Jupyter left, pytest and a shell right'
-$qRight = Split-PsxPane $q $q.root.id 'h' 45
-$qBottom = Split-PsxPane $q $qRight 'v' 50
-Set-PsxPaneApp $q $q.root.children[0].id 'jupyter' 'uv run jupyter lab' $false 'Jupyter' | Out-Null
-Set-PsxPaneApp $q $qRight 'pytest' 'uv run pytest -q' $false 'pytest' | Out-Null
-$q.focus = $qBottom
-Save $q
-
 # --- simple ----------------------------------------------------------------
+# Two starters only, on purpose: one worked example and one blank canvas. More
+# would be guessing at workflows, and every one of them is a file the user has
+# to delete before `psx ls` reads as theirs.
 $s = New-PsxLayout 'simple' 'two shells side by side'
 $null = Split-PsxPane $s $s.root.id 'h' 50
 Save $s

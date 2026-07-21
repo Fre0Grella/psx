@@ -26,6 +26,21 @@ function Write-PsxLine {
   Write-Host $pad.Substring($b) -ForegroundColor DarkGray
 }
 
+function Read-PsxKey {
+  <#
+    One keypress. Falls back to a line read when there is no console or stdin is
+    redirected - piping into psx, or running it from a script, would otherwise
+    throw "Cannot read keys when either application does not have a console".
+    The editor still needs a real console, but a yes/no confirmation should not.
+  #>
+  try { return [Console]::ReadKey($true).KeyChar }
+  catch {
+    $line = Read-Host
+    if ($line.Length -gt 0) { return $line[0] }
+    return [char]0
+  }
+}
+
 function Read-PsxLineInput {
   # Prompt on a cleared line at the bottom of the frame. Returns '' if cancelled.
   param([string]$Prompt, [string]$Default = '')

@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse every script
+        shell: pwsh
+        run: |
+          $bad = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs -and $errs.Count) {
+              $bad++
+              Write-Host "::error file=$($_.FullName)::parse error"
+              $errs | ForEach-Object { Write-Host "  $($_.Message)" }
+            }
+          }
+          if ($bad) { exit 1 }
+          Write-Host "all scripts parse clean"
+
+      - name: Tests
+        shell: pwsh
+        run: pwsh -NoProfile -File tests/run.ps1
+
+      # tests/e2e.ps1 is deliberately NOT run here: it drives a real psmux
+      # server and needs the binary installed. It is a local check.
+      #
+      # Everything else runs fine on a headless runner because the layout model,
+      # geometry and renderer are pure functions - only the input loop touches
+      # the console, and nothing in tests/run.ps1 goes near it.
+      - name: Templates still load and render
+        shell: pwsh
+        run: |
+          . ./src/Model.ps1
+          . ./src/Render.ps1
+          . ./src/Store.ps1
+          $fail = 0
+          foreach ($f in Get-ChildItem templates -Filter *.json) {
+            $t = Get-Content $f.FullName -Raw | ConvertFrom-Json -AsHashtable -Depth 30
+            $t = Reset-PsxPaneIds $t
+            $r = Format-PsxLayout $t 60 14
+            $panes = @(Get-PsxPanes $t.root).Count
+            $rects = @($r.Rects).Count
+            if ($rects -ne $panes -or $r.Lines.Count -ne 14) {
+              Write-Host "::error file=templates/$($f.Name)::renders wrong ($panes panes, $rects rects)"
+              $fail++
+            }
+            else { Write-Host "  $($f.BaseName): $panes panes, renders clean" }
+          }
+          if ($fail) { exit 1 }

@@ -62,13 +62,35 @@ function Remove-PsxTemplate {
 }
 
 function Initialize-PsxTemplates {
-  # First run: seed the starter templates. Never overwrites an existing file, so
-  # editing 'dev' and then updating psx keeps your version.
+  <#
+    Seed the starter templates ONCE, on first run.
+
+    The marker file is the whole point. Seeding "any file that is missing" on
+    every invocation looks harmless and quietly makes deletion impossible:
+    `psx delete quantum` removes the file, the next `psx ls` copies it straight
+    back, and the template appears to be undeletable. A starter template is a
+    starting point, not a default that keeps reasserting itself.
+
+    If templates already exist but the marker does not, this is an install from
+    before the marker existed - record it as seeded and copy nothing, so an
+    upgrade cannot resurrect something already deleted.
+  #>
   param([string]$SeedDir)
-  if (-not (Test-Path $SeedDir)) { return }
+
   $dst = Get-PsxTemplateDir
-  foreach ($f in Get-ChildItem $SeedDir -Filter '*.json') {
-    $target = Join-Path $dst $f.Name
-    if (-not (Test-Path $target)) { Copy-Item $f.FullName $target }
+  $marker = Join-Path (Split-Path $dst -Parent) '.seeded'
+  if (Test-Path $marker) { return }
+
+  if (@(Get-ChildItem $dst -Filter '*.json' -ErrorAction SilentlyContinue).Count -gt 0) {
+    Set-Content $marker "pre-existing install, not seeded" -Encoding utf8
+    return
   }
+
+  if (-not (Test-Path $SeedDir)) { return }
+  $copied = @()
+  foreach ($f in Get-ChildItem $SeedDir -Filter '*.json') {
+    Copy-Item $f.FullName (Join-Path $dst $f.Name)
+    $copied += $f.BaseName
+  }
+  Set-Content $marker ("seeded: " + ($copied -join ', ')) -Encoding utf8
 }
