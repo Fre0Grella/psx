@@ -60,14 +60,17 @@ Every command is either **run** or **typed**:
 
 ## Install
 
+Requires [psmux](https://github.com/marlocarlo/psmux) (`winget install marlocarlo.psmux`) and
+PowerShell 7.
+
 ```powershell
-git clone <this repo> C:\Users\you\Drawer2\MyProjects\psx
+git clone https://github.com/Fre0Grella/psx.git $HOME\psx
 ```
 
 Then add to your PowerShell profile (`$PROFILE`):
 
 ```powershell
-function psx { & "C:\Users\you\Drawer2\MyProjects\psx\bin\psx.ps1" @args }
+function psx { & "$HOME\psx\bin\psx.ps1" @args }
 ```
 
 Open a new terminal. First run copies the starter templates into `~/.psx/templates`.
