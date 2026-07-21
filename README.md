@@ -67,6 +67,8 @@ PowerShell 7.
 git clone https://github.com/Fre0Grella/psx.git $HOME\psx
 ```
 
+Or unzip a build from [Releases](https://github.com/Fre0Grella/psx/releases) into `$HOME\psx`.
+
 Then add to your PowerShell profile (`$PROFILE`):
 
 ```powershell

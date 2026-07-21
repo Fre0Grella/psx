@@ -1,0 +1,115 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. v0.1.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so the notes can diff against the last tag
+
+      - name: Work out the version
+        id: v
+        shell: pwsh
+        run: |
+          $v = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            '${{ github.event.inputs.version }}'
+          } else {
+            '${{ github.ref_name }}'
+          }
+          if ($v -notmatch '^v\d+\.\d+\.\d+') {
+            Write-Host "::error::'$v' is not a vMAJOR.MINOR.PATCH tag"
+            exit 1
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "releasing $v"
+
+      # Gate the release on the same checks CI runs. A tag should never be able
+      # to publish something that would have failed on main.
+      - name: Parse every script
+        shell: pwsh
+        run: |
+          $bad = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs -and $errs.Count) { $bad++; Write-Host "::error file=$($_.FullName)::parse error" }
+          }
+          if ($bad) { exit 1 }
+
+      - name: Tests
+        shell: pwsh
+        run: pwsh -NoProfile -File tests/run.ps1
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $v = '${{ steps.v.outputs.version }}'
+          $stage = "dist/psx"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          # Ship what psx needs to run, nothing else: no tests, no tools, no .git.
+          Copy-Item -Recurse bin, src, templates $stage
+          Copy-Item README.md, LICENSE $stage
+          Compress-Archive -Path "$stage/*" -DestinationPath "dist/psx-$v.zip"
+          Get-ChildItem dist
+
+      - name: Check the package actually works
+        shell: pwsh
+        run: |
+          # Unpack the archive somewhere clean and drive the real entry point.
+          # Shipping an archive that is missing a file is the classic release
+          # bug, and it stays invisible until someone downloads it.
+          $test = Join-Path $env:RUNNER_TEMP 'relcheck'
+          Expand-Archive "dist/psx-${{ steps.v.outputs.version }}.zip" $test -Force
+
+          # Give it a throwaway home so the check exercises first-run seeding
+          # rather than whatever the runner already has.
+          #
+          # It must be USERPROFILE, and it must be a CHILD process: PowerShell
+          # fixes $HOME at startup from USERPROFILE, so setting $env:HOME does
+          # nothing at all on Windows, and setting USERPROFILE in-process is
+          # too late for the session already running.
+          $fake = Join-Path $env:RUNNER_TEMP 'fakehome'
+          New-Item -ItemType Directory -Force -Path $fake | Out-Null
+          $env:USERPROFILE = $fake
+
+          $out = & pwsh -NoProfile -File "$test/bin/psx.ps1" ls | Out-String
+          Write-Host $out
+          if ($out -notmatch '\bdev\b' -or $out -notmatch '\bsimple\b') {
+            Write-Host '::error::the packaged psx did not seed and list its starter templates'
+            exit 1
+          }
+          if (-not (Test-Path (Join-Path $fake '.psx/templates/dev.json'))) {
+            Write-Host '::error::seeding wrote nothing to the throwaway home - the check was not testing what it claims'
+            exit 1
+          }
+
+          $usage = & pwsh -NoProfile -File "$test/bin/psx.ps1" -h | Out-String
+          if ($usage -notmatch 'EDITOR KEYS') {
+            Write-Host '::error::the packaged psx could not print usage'
+            exit 1
+          }
+          Write-Host 'package runs clean'
+
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.v.outputs.version }}'
+          gh release create $v "dist/psx-$v.zip" `
+            --title "psx $v" `
+            --generate-notes
